@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { profileUpload } from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -157,25 +158,60 @@ router.get("/provider/:userId", async (req, res) => {
 // ================================
 // 🖼️ Upload Provider Profile Picture
 // ================================
-router.post("/provider/:userId/upload", upload.single("profilePic"), async (req, res) => {
-  try {
-    const { userId } = req.params;
-    if (!req.file) return res.status(400).json({ message: "No image uploaded" });
+// router.post("/provider/:userId/upload", upload.single("profilePic"), async (req, res) => {
+//   try {
+//     const { userId } = req.params;
+//     if (!req.file) return res.status(400).json({ message: "No image uploaded" });
 
-    const imagePath = `/uploads/${req.file.filename}`;
+//     const imagePath = `/uploads/${req.file.filename}`;
 
-    const updatedUser = await User.findOneAndUpdate(
-      { userId },
-      { profilePic: imagePath },
-      { new: true }
-    );
+//     const updatedUser = await User.findOneAndUpdate(
+//       { userId },
+//       { profilePic: imagePath },
+//       { new: true }
+//     );
 
-    res.json({ message: "Image uploaded", profilePic: imagePath, user: updatedUser });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Upload failed" });
+//     res.json({ message: "Image uploaded", profilePic: imagePath, user: updatedUser });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Upload failed" });
+//   }
+// });
+
+// ================================
+// 🖼️ Upload Provider Profile Picture (UPDATED FOR CLOUDINARY)
+// ================================
+router.post(
+  "/provider/:userId/upload",
+  profileUpload.single("profilePic"), // ✅ Using Cloudinary storage
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No image uploaded" });
+      }
+
+      // ✅ Cloudinary automatically provides the full URL
+      const imagePath = req.file.path; // This is the Cloudinary URL
+
+      const updatedUser = await User.findOneAndUpdate(
+        { userId },
+        { profilePic: imagePath },
+        { new: true }
+      );
+
+      res.json({
+        message: "Image uploaded",
+        profilePic: imagePath,
+        user: updatedUser,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Upload failed" });
+    }
   }
-});
+);
 
 // ================================
 // ✏️ Update Farmer Profile
